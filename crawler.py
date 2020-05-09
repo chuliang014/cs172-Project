@@ -47,10 +47,25 @@ class MyStreamListener(tweepy.StreamListener):
             t.start()
 
     def on_status(self, status):
-        data = status._json
         # just collect data in this function and no other processing
         # because it may cause program stall or exception like incompleteRead
-        self.q.put(data)
+        data = status._json
+        text = data.get('text')
+        try:
+            text = status.extended_tweet['full_text']
+        except Exception as e:
+            pass
+        tweet = {
+            'text': text,
+            'title': None,
+            'urls': data.get('urls'),
+            'created_at': data.get('created_at'),
+            'geo': data.get('coordinates'),
+            'location': data.get('location'),
+            'id': data.get('id'),
+            'id_str': data.get('id_str')
+        }
+        self.q.put(tweet)
         return True
 
     # this is for processing the data
@@ -112,7 +127,7 @@ def process(tweets_data):
 
         tweetDB.write(json.dumps(tweets_data) + '\n')
 
-        # if reach 2G, teminate the program
+        # teminate the program
         if currFile > maxNumFiles:
             myStream.disconnect()
 
