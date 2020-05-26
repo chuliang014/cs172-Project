@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="output" path="bin"/>
+	<classpathentry kind="lib" path="dependencies/commons-cli-1.4.jar"/>
+    <classpathentry kind="lib" path="dependencies/gson-2.8.6.jar"/>
+    <classpathentry kind="lib" path="dependencies/lucene-demo-4.7.2.jar"/>
+    <classpathentry kind="lib" path="dependencies/lucene-queryparser-4.7.2.jar"/>
+    <classpathentry kind="lib" path="dependencies/lucene-core-4.7.2.jar"/>
+    <classpathentry kind="lib" path="dependencies/lucene-analyzers-common-4.7.2.jar"/>
+    <classpathentry kind="lib" path="dependencies/json-library.jar"/>
+    <classpathentry kind="lib" path="dependencies/json-simple.jar"/>
+</classpath>
