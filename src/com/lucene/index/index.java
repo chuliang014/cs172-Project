@@ -1,149 +1,131 @@
 package com.lucene.index;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.InputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.Reader;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.core.KeywordAnalyzer;
-import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.Version;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
-
-import com.google.gson.*;
+import org.json.simple.*;
+import org.json.simple.parser.JSONParser;
 
 public class index {
 
-	public IndexWriter writer, FSwriter;
-	public RAMDirectory RAMdir;
+	public IndexWriter writer;
 
 	// initialization
 	public index(String indexDir) throws Exception {
 		super();
 		// getting the path to store
-		Directory FSdir = FSDirectory.open(new File(indexDir));
-		RAMdir = new RAMDirectory();
-		Map<String, Analyzer> FSanalyzerPerField = new HashMap<String, Analyzer>();
-		FSanalyzerPerField.put("title", new KeywordAnalyzer());
-		PerFieldAnalyzerWrapper FSWrapper = new PerFieldAnalyzerWrapper(new StandardAnalyzer(Version.LUCENE_47),
-				FSanalyzerPerField);
-		Map<String, Analyzer> analyzerPerField = new HashMap<String, Analyzer>();
-		FSanalyzerPerField.put("title", new KeywordAnalyzer());
-		PerFieldAnalyzerWrapper Wrapper = new PerFieldAnalyzerWrapper(new StandardAnalyzer(Version.LUCENE_47),
-				analyzerPerField);
-		IndexWriterConfig con = new IndexWriterConfig(Version.LUCENE_47, Wrapper);
-		IndexWriterConfig FScon = new IndexWriterConfig(Version.LUCENE_47, FSWrapper).setOpenMode(OpenMode.CREATE);
-		writer = new IndexWriter(RAMdir, con);
-		FSwriter = new IndexWriter(FSdir, FScon);
+		Directory dir = FSDirectory.open(new File(indexDir));
+		Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_47);
+		IndexWriterConfig con = new IndexWriterConfig(Version.LUCENE_47, analyzer).setOpenMode(OpenMode.CREATE);
+		writer = new IndexWriter(dir, con);
 	}
 
 	// close indexing
 	public void close() throws Exception {
-		FSwriter.close();
+		writer.close();
 	}
 
 	public int index(String dataDir) throws Exception {
 
 		File[] file = new File(dataDir).listFiles();
 		// indexing file
-		int i = 0;
 
 		for (File files : file) {
 			indexFile(files);
-			i++;
-			if (i % 4000 == 0) {
-				writer.close();
-				FSwriter.addIndexes(RAMdir);
-				RAMdir = new RAMDirectory();
-				Map<String, Analyzer> analyzerPerField = new HashMap<String, Analyzer>();
-				analyzerPerField.put("title", new KeywordAnalyzer());
-				PerFieldAnalyzerWrapper Wrapper = new PerFieldAnalyzerWrapper(new StandardAnalyzer(Version.LUCENE_47),
-						analyzerPerField);
-				IndexWriterConfig con = new IndexWriterConfig(Version.LUCENE_47, Wrapper);
-				writer = new IndexWriter(RAMdir, con);
-			}
 		}
 
-		writer.close();
-		FSwriter.addIndexes(RAMdir);
 		// return how many files we index
-		return FSwriter.numDocs();
+		return writer.numDocs();
 	}
 
-	public JSONArray parseJSONFile(String jsonFilePath) throws FileNotFoundException {
+	public List<JSONObject> parseJSONFile(String jsonFilePath) throws FileNotFoundException {
 
-		File file = new File(jsonFilePath);
-//		System.out.println();
-		InputStream jsonFile = new FileInputStream(file);
-		
-		Reader readerJson = new InputStreamReader(jsonFile);
+		List<JSONObject> json = new ArrayList<JSONObject>();
+		JSONObject obj;
+		JSONParser parser = new JSONParser();
+		String line = null;
 
-//		JsonParser parse = new JsonParser();
-		Object fileObjects = JSONValue.parse(readerJson);
-//		JsonObject json = null;
-		JSONArray arrayObjects = (JSONArray) fileObjects;
-		
+		try {
+			// setting the format of encoding is utf-8
+			InputStreamReader inputReader = new InputStreamReader(new FileInputStream(jsonFilePath), "UTF-8");
+			BufferedReader bufferReader = new BufferedReader(inputReader);
 
-		return arrayObjects;
+			while ((line = bufferReader.readLine()) != null) {
+				// the way of solving the problem of utf-8 with bom
+				line = line.replaceAll("\\uFEFF", "");
+				obj = (JSONObject) parser.parse(line);
+				json.add(obj);
+			}
+			bufferReader.close();
+
+		} catch (IOException ex) {
+			// TODO: handle exception
+			System.out.println("Error reading file '" + jsonFilePath + "'");
+		} catch (org.json.simple.parser.ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return json;
 	}
 
 	private void indexFile(File files) throws Exception {
 
+		// writing document into index file
 		getDocument(files);
 
-		// writing document into index file
 	}
 
 	private void getDocument(File files) throws Exception {
 		// TODO Auto-generated method stub
 
 		// parsing jsonFile
-		JSONArray jso = parseJSONFile(files.getPath());
-		System.out.println(jso.isEmpty());
-		// storing header, url, body into indexing file. If NO, not store
+		List<JSONObject> jso = parseJSONFile(files.getAbsolutePath());
+		// storing text, url, title into indexing file. If NO, not store
 		// set different weights
-
-		for (JSONObject object : (List<JSONObject>) jso) {
+		for (JSONObject object : jso) {
 			Document doc = new Document();
-			for (String field : (Set<String>) object.keySet()) {
-				Class type = object.get(field).getClass();
-				if (type.equals(String.class)) {
-					TextField title = new TextField("title", object.get("title").toString(), Field.Store.YES);
-					title.setBoost(1.5F);
-					doc.add(title);
-					doc.add(new StringField("url", object.get("url").toString(), Field.Store.YES));
-					doc.add(new TextField("text", object.get("text").toString(), Field.Store.YES));
-				}
-			}
+			TextField text = new TextField("text", object.get("text").toString(), Field.Store.YES);
+			text.setBoost(1.5F);
+			doc.add(text);
+			String url = (object.get("urls") == null) ? "" : object.get("urls").toString();
+			doc.add(new TextField("urls", url, Field.Store.NO));
+			String title = (object.get("title") == null) ? "" : getTitle((JSONArray) object.get("title"));
+			doc.add(new TextField("title", title, Field.Store.YES));
+			System.out.println("text:" + text + "urls:" + url + "title:" + title);
 			try {
-				System.out.println(doc);
 				writer.addDocument(doc);
 			} catch (Exception e) {
 				// TODO: handle exception
+				e.printStackTrace();
 			}
 		}
+	}
 
+	private String getTitle(JSONArray titleArray) {
+		// TODO Auto-generated method stub
+		String title = "";
+		if (titleArray.size() != 0)
+			title = (String) titleArray.get(0);
+
+		return title;
 	}
 
 	public static void main(String[] args) {
