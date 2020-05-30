@@ -34,7 +34,7 @@ import java.net.InetSocketAddress;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 
-public class textSearch {
+public class search {
 	final static String indexDir = "index";
 
 	public static void main(String[] args) throws IOException {
