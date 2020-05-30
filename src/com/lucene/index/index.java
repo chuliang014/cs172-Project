@@ -11,8 +11,10 @@ import java.util.List;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.DateTools;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -98,23 +100,33 @@ public class index {
 
 		// parsing jsonFile
 		List<JSONObject> jso = parseJSONFile(files.getAbsolutePath());
-		// storing text, url, title into indexing file. If NO, not store
+		// storing text, title into indexing file. If NO, not store
 		// set different weights
 		for (JSONObject object : jso) {
-			Document doc = new Document();
-			TextField text = new TextField("text", object.get("text").toString(), Field.Store.YES);
-			text.setBoost(1.5F);
-			doc.add(text);
-			String url = (object.get("urls") == null) ? "" : object.get("urls").toString();
-			doc.add(new TextField("urls", url, Field.Store.NO));
-			String title = (object.get("title") == null) ? "" : getTitle((JSONArray) object.get("title"));
-			doc.add(new TextField("title", title, Field.Store.YES));
-			System.out.println("text:" + text + "urls:" + url + "title:" + title);
-			try {
-				writer.addDocument(doc);
-			} catch (Exception e) {
-				// TODO: handle exception
-				e.printStackTrace();
+			// only add a document with timestamp
+			if (object.get("timestamp_ms") != null) {
+				Document doc = new Document();
+
+				TextField text = new TextField("text", object.get("text").toString(), Field.Store.YES);
+				text.setBoost(1.5F);
+				doc.add(text);
+
+				doc.add(new StringField("created_at", object.get("created_at").toString(), Field.Store.YES));
+
+				Long timestamp = Long.valueOf(object.get("timestamp_ms").toString());
+				String dateTimeString = DateTools.timeToString(timestamp, DateTools.Resolution.SECOND);
+				doc.add(new Field("datetime", dateTimeString, Field.Store.YES, Field.Index.NOT_ANALYZED));
+
+				String title = (object.get("title") == null) ? "" : getTitle((JSONArray) object.get("title"));
+
+				doc.add(new TextField("title", title, Field.Store.YES));
+				System.out.println("text: " + text + " dateTimeString : " + timestamp + " title: " + title);
+				try {
+					writer.addDocument(doc);
+				} catch (Exception e) {
+					// TODO: handle exception
+					e.printStackTrace();
+				}
 			}
 		}
 	}
