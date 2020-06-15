@@ -115,11 +115,14 @@ public class index {
 
 				Long timestamp = Long.valueOf(object.get("timestamp_ms").toString());
 				String dateTimeString = DateTools.timeToString(timestamp, DateTools.Resolution.SECOND);
-				doc.add(new Field("datetime", dateTimeString, Field.Store.YES, Field.Index.NOT_ANALYZED));
+				
+				doc.add(new Field("datetime", dateTimeString, Field.Store.NO, Field.Index.NOT_ANALYZED));
 
 				String title = (object.get("title") == null) ? "" : getTitle((JSONArray) object.get("title"));
+				TextField titleField = new TextField("title", title, Field.Store.YES);
+				titleField.setBoost(1.2F);
+				doc.add(titleField);
 
-				doc.add(new TextField("title", title, Field.Store.YES));
 				System.out.println("text: " + text + " dateTimeString : " + timestamp + " title: " + title);
 				try {
 					writer.addDocument(doc);

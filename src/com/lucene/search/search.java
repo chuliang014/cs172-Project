@@ -118,7 +118,7 @@ public class search {
 		// The last two parameters:
 		// doDocScores = true means that you only score first n documents
 		// doMaxScore = true means that you need to score all of documents you search
-		TopDocs hits = indexSearch.search(query, null, 10, sort, true, false);
+		TopDocs hits = indexSearch.search(query, null, 20, sort, true, false);
 
 		long end = System.currentTimeMillis();
 
